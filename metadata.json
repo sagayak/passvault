@@ -1,0 +1,5 @@
+{
+  "name": "PassVault",
+  "description": "A secure, modern password manager with categorized vaults, master password protection, and vehicle maintenance tracking.",
+  "requestFramePermissions": []
+}
