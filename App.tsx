@@ -50,7 +50,8 @@ const App: React.FC = () => {
     name: '',
     dueDate: '',
     premium: '',
-    comments: ''
+    comments: '',
+    isPaid: false
   });
   const [editingPassword, setEditingPassword] = React.useState<PasswordEntry | null>(null);
   const [editingVehicle, setEditingVehicle] = React.useState<VehicleEntry | null>(null);
@@ -99,13 +100,23 @@ const App: React.FC = () => {
       }));
       setVehicles(mappedVehicles);
 
-      const mappedInsurances: InsuranceEntry[] = (insData || []).map((i: any) => ({
-        id: i.id,
-        name: i.name,
-        dueDate: i.due_date,
-        premium: i.premium,
-        comments: i.comments
-      }));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const mappedInsurances: InsuranceEntry[] = (insData || []).map((i: any) => {
+        const dueDate = new Date(i.due_date);
+        // Automatic unpaid logic: if date passed and marked as paid, it resets to unpaid for the user
+        const isActuallyPaid = (dueDate < today) ? false : (i.is_paid ?? false);
+        
+        return {
+          id: i.id,
+          name: i.name,
+          dueDate: i.due_date,
+          premium: i.premium,
+          comments: i.comments,
+          isPaid: isActuallyPaid
+        };
+      });
       setInsurances(mappedInsurances);
 
     } catch (error: any) {
@@ -159,6 +170,18 @@ const App: React.FC = () => {
       toast({ title: 'Policy Removed', description: 'The insurance record has been deleted.' });
     } catch (error: any) {
       toast({ title: 'Delete Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleTogglePaid = async (entry: InsuranceEntry) => {
+    const newStatus = !entry.isPaid;
+    try {
+      const { error } = await supabase.from('insurances').update({ is_paid: newStatus }).eq('id', entry.id);
+      if (error) throw error;
+      setInsurances(prev => prev.map(i => i.id === entry.id ? { ...i, isPaid: newStatus } : i));
+      toast({ title: newStatus ? 'Marked as Paid' : 'Marked as Unpaid', description: entry.name });
+    } catch (error: any) {
+      toast({ title: 'Update Error', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -218,7 +241,8 @@ const App: React.FC = () => {
       name: newInsuranceForm.name,
       due_date: newInsuranceForm.dueDate,
       premium: newInsuranceForm.premium,
-      comments: newInsuranceForm.comments
+      comments: newInsuranceForm.comments,
+      is_paid: newInsuranceForm.isPaid
     };
     try {
       const { data, error } = await supabase.from('insurances').insert([dbPayload]).select();
@@ -229,10 +253,11 @@ const App: React.FC = () => {
           name: data[0].name,
           dueDate: data[0].due_date,
           premium: data[0].premium,
-          comments: data[0].comments
+          comments: data[0].comments,
+          isPaid: data[0].is_paid
         }, ...prev]);
         setIsAddInsuranceModalOpen(false);
-        setNewInsuranceForm({ name: '', dueDate: '', premium: '', comments: '' });
+        setNewInsuranceForm({ name: '', dueDate: '', premium: '', comments: '', isPaid: false });
         toast({ title: 'Insurance Added', description: `${newInsuranceForm.name} policy saved.` });
       }
     } catch (error: any) {
@@ -287,7 +312,8 @@ const App: React.FC = () => {
         name: editingInsurance.name,
         due_date: editingInsurance.dueDate,
         premium: editingInsurance.premium,
-        comments: editingInsurance.comments
+        comments: editingInsurance.comments,
+        is_paid: editingInsurance.isPaid
       }).eq('id', editingInsurance.id);
       if (error) throw error;
       setInsurances(prev => prev.map(i => i.id === editingInsurance.id ? editingInsurance : i));
@@ -368,7 +394,7 @@ const App: React.FC = () => {
         } else if (entry.name && (entry.last_service || entry.lastService)) {
           vehBatch.push({ name: entry.name, type: entry.type || 'Car', last_service: entry.last_service || entry.lastService, next_service: entry.next_service || entry.nextService });
         } else if (entry.name && (entry.due_date || entry.dueDate)) {
-          insBatch.push({ name: entry.name, due_date: entry.due_date || entry.dueDate, premium: entry.premium || '', comments: entry.comments || '' });
+          insBatch.push({ name: entry.name, due_date: entry.due_date || entry.dueDate, premium: entry.premium || '', comments: entry.comments || '', is_paid: entry.is_paid === 'true' });
         }
       }
 
@@ -401,7 +427,7 @@ const App: React.FC = () => {
       case Section.PERSONAL:
         return <PasswordTable entries={passwords.filter(p => p.category === 'personal')} onDelete={handleDeletePassword} onEdit={(p) => { setEditingPassword(p); setIsEditPasswordModalOpen(true); }} />;
       case Section.INSURANCE:
-        return <InsuranceTable entries={insurances} onDelete={handleDeleteInsurance} onEdit={(i) => { setEditingInsurance(i); setIsEditInsuranceModalOpen(true); }} />;
+        return <InsuranceTable entries={insurances} onDelete={handleDeleteInsurance} onEdit={(i) => { setEditingInsurance(i); setIsEditInsuranceModalOpen(true); }} onTogglePaid={handleTogglePaid} />;
       case Section.MISCELLANEOUS:
         return <MiscellaneousGrid entries={vehicles} onDelete={handleDeleteVehicle} onEdit={(v) => { setEditingVehicle(v); setIsEditVehicleModalOpen(true); }} />;
       default:
@@ -484,6 +510,15 @@ const App: React.FC = () => {
               <input type="text" placeholder="e.g. $120/mo" required className="w-full p-2 border rounded-lg" value={newInsuranceForm.premium} onChange={e => setNewInsuranceForm({...newInsuranceForm, premium: e.target.value})} />
             </div>
           </div>
+          <div className="flex items-center gap-2 py-2">
+            <input 
+              type="checkbox" 
+              id="isPaidAdd" 
+              checked={newInsuranceForm.isPaid} 
+              onChange={e => setNewInsuranceForm({...newInsuranceForm, isPaid: e.target.checked})} 
+            />
+            <label htmlFor="isPaidAdd" className="text-sm font-medium text-gray-700">Already Paid?</label>
+          </div>
           <textarea placeholder="Comments" className="w-full p-2 border rounded-lg" value={newInsuranceForm.comments} onChange={e => setNewInsuranceForm({...newInsuranceForm, comments: e.target.value})} />
           <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded-lg">Save Policy</button>
         </form>
@@ -521,6 +556,15 @@ const App: React.FC = () => {
             <div className="grid grid-cols-2 gap-2">
               <input type="date" required className="w-full p-2 border rounded-lg" value={editingInsurance.dueDate} onChange={e => setEditingInsurance({...editingInsurance, dueDate: e.target.value})} />
               <input type="text" required className="w-full p-2 border rounded-lg" value={editingInsurance.premium} onChange={e => setEditingInsurance({...editingInsurance, premium: e.target.value})} />
+            </div>
+            <div className="flex items-center gap-2 py-2">
+              <input 
+                type="checkbox" 
+                id="isPaidEdit" 
+                checked={editingInsurance.isPaid} 
+                onChange={e => setEditingInsurance({...editingInsurance, isPaid: e.target.checked})} 
+              />
+              <label htmlFor="isPaidEdit" className="text-sm font-medium text-gray-700">Paid</label>
             </div>
             <textarea className="w-full p-2 border rounded-lg" value={editingInsurance.comments} onChange={e => setEditingInsurance({...editingInsurance, comments: e.target.value})} />
             <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded-lg">Update</button>

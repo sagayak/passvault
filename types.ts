@@ -28,6 +28,7 @@ export interface InsuranceEntry {
   dueDate: string;
   premium: string;
   comments: string;
+  isPaid: boolean;
 }
 
 export type VaultData = {
