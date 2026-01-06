@@ -24,18 +24,30 @@ const InsuranceRow: React.FC<{
 
   const isPastDue = dueDate < today;
   const isDueSoon = dueDate >= today && dueDate <= oneMonthFromNow;
-  const isCritical = isPastDue || isDueSoon;
+
+  // Visual classes based on status
+  const rowBgClass = isPastDue ? 'bg-red-50' : isDueSoon ? 'bg-orange-50/30' : '';
+  const dateTextClass = isPastDue ? 'text-red-700' : isDueSoon ? 'text-orange-700' : 'text-gray-700';
 
   return (
-    <tr className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors ${isCritical ? 'bg-red-50/30' : ''}`}>
+    <tr className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors ${rowBgClass}`}>
       <td className="py-4 px-4 font-medium text-gray-900">{entry.name}</td>
-      <td className={`py-4 px-4 font-semibold ${isCritical ? 'text-red-600' : 'text-gray-600'}`}>
+      <td className={`py-4 px-4 font-semibold ${dateTextClass}`}>
         <div className="flex items-center gap-2">
           {entry.dueDate}
-          {isCritical && <AlertCircle size={14} className="animate-pulse" />}
+          {isPastDue && <AlertCircle size={14} className="text-red-600 animate-pulse" />}
+          {!isPastDue && isDueSoon && <AlertCircle size={14} className="text-orange-500" />}
         </div>
-        {isPastDue && <span className="text-[10px] block uppercase">Past Due</span>}
-        {isDueSoon && !isPastDue && <span className="text-[10px] block uppercase">Due Soon</span>}
+        {isPastDue && (
+          <span className="text-[10px] font-bold text-red-600 block uppercase mt-0.5">
+            Past Due
+          </span>
+        )}
+        {!isPastDue && isDueSoon && (
+          <span className="text-[10px] font-bold text-orange-600 block uppercase mt-0.5">
+            Due Soon
+          </span>
+        )}
       </td>
       <td className="py-4 px-4 text-gray-900 font-mono">{entry.premium}</td>
       <td className="py-4 px-4 text-gray-500 italic text-xs max-w-xs truncate" title={entry.comments}>

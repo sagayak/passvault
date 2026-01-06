@@ -439,10 +439,16 @@ const App: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Vault Locked</h2>
           <p className="text-gray-500 mb-8 max-w-xs leading-relaxed">Enter your master password to unlock PassVault.</p>
           <div className="w-full space-y-4">
-            <input type="password" placeholder="Master Password" className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} autoFocus />
+            <input 
+              type="password" 
+              placeholder="Master Password" 
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+              value={passwordInput} 
+              onChange={(e) => setPasswordInput(e.target.value)} 
+              autoFocus 
+            />
             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-lg">Unlock Vault</button>
           </div>
-          <p className="mt-6 text-xs text-gray-400">Hint: 1218</p>
         </form>
       </Modal>
 
